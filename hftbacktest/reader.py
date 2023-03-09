@@ -86,27 +86,26 @@ class DataReader:
         self.cached.remove(data)
 
     def next(self):
-        if self.file_num < len(self.file_list):
-            filepath = self.file_list[self.file_num]
-            if not self.cached.__contains__(self.file_num):
-                with objmode(data='float64[:, :]'):
-                    print('Load %s' % filepath)
-                    if filepath.endswith('.npy'):
-                        data = np.load(filepath)
-                    elif filepath.endswith('.npz'):
-                        tmp = np.load(filepath)
-                        if 'data' in tmp:
-                            data = tmp['data']
-                        else:
-                            k = list(tmp.keys())[0]
-                            print("Data is loaded from %s instead of 'data'" % k)
-                            data = tmp[k]
-                    else:
-                        df = pd.read_pickle(filepath, compression='gzip')
-                        data = df.to_numpy()
-                self.cached[self.file_num] = data
-            data = self.cached[self.file_num]
-            self.file_num += 1
-            return data
-        else:
+        if self.file_num >= len(self.file_list):
             return np.empty((0, 0,), float64)
+        filepath = self.file_list[self.file_num]
+        if not self.cached.__contains__(self.file_num):
+            with objmode(data='float64[:, :]'):
+                print(f'Load {filepath}')
+                if filepath.endswith('.npy'):
+                    data = np.load(filepath)
+                elif filepath.endswith('.npz'):
+                    tmp = np.load(filepath)
+                    if 'data' in tmp:
+                        data = tmp['data']
+                    else:
+                        k = list(tmp.keys())[0]
+                        print(f"Data is loaded from {k} instead of 'data'")
+                        data = tmp[k]
+                else:
+                    df = pd.read_pickle(filepath, compression='gzip')
+                    data = df.to_numpy()
+            self.cached[self.file_num] = data
+        data = self.cached[self.file_num]
+        self.file_num += 1
+        return data

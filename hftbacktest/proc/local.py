@@ -28,10 +28,9 @@ class Local_(Proc):
     def _next_data_timestamp(self):
         if self.row_num + 1 < len(self.data):
             return self.data[self.row_num + 1, COL_LOCAL_TIMESTAMP]
-        else:
-            if len(self.next_data) == 0:
-                return -2
-            return self.next_data[0, COL_LOCAL_TIMESTAMP]
+        if len(self.next_data) == 0:
+            return -2
+        return self.next_data[0, COL_LOCAL_TIMESTAMP]
 
     def _process_recv_order(self, order, recv_timestamp, wait_resp, next_timestamp):
         # Apply the received order response to the local orders.
@@ -46,7 +45,7 @@ class Local_(Proc):
         # Process a depth event
         if row[COL_EVENT] == DEPTH_CLEAR_EVENT:
             self.depth.clear_depth(row[COL_SIDE], row[COL_PRICE])
-        elif row[COL_EVENT] == DEPTH_EVENT or row[COL_EVENT] == DEPTH_SNAPSHOT_EVENT:
+        elif row[COL_EVENT] in [DEPTH_EVENT, DEPTH_SNAPSHOT_EVENT]:
             if row[COL_SIDE] == BUY:
                 self.depth.update_bid_depth(
                     row[COL_PRICE],
@@ -94,9 +93,7 @@ class Local_(Proc):
 
     def clear_inactive_orders(self):
         for order in list(self.orders.values()):
-            if order.status == EXPIRED \
-                    or order.status == FILLED \
-                    or order.status == CANCELED:
+            if order.status in [EXPIRED, FILLED, CANCELED]:
                 del self.orders[order.order_id]
 
 

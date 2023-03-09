@@ -56,10 +56,13 @@ def _validate_data(values, tick_size=None, lot_size=None, err_bound=1e-8):
         # Rows of the same event type must be correctly ordered.
 
         # All depth events must have valid timestamp.
-        if event in [DEPTH_EVENT, DEPTH_CLEAR_EVENT, DEPTH_SNAPSHOT_EVENT]:
-            if local_timestamp == -1 or exch_timestamp == -1:
-                print('All depth events must have valid timestamp.')
-                return -1
+        if event in [
+            DEPTH_EVENT,
+            DEPTH_CLEAR_EVENT,
+            DEPTH_SNAPSHOT_EVENT,
+        ] and (local_timestamp == -1 or exch_timestamp == -1):
+            print('All depth events must have valid timestamp.')
+            return -1
 
     return num_reversed_exch_timestamp
 
@@ -128,13 +131,14 @@ def _correct_exch_timestamp(values, num_corr):
             i += 1
         if exch_timestamp < prev_exch_timestamp:
             if values[row_num, COL_EVENT] in [DEPTH_EVENT, DEPTH_CLEAR_EVENT, DEPTH_SNAPSHOT_EVENT]:
-                # Depth event row cannot have invalid timestamp.
-                # The previous rows that are behind of exch_timestamp should be not depth events.
-                start = -1
-                for i in range(out_row_num - 1, -1, -1):
-                    if exch_timestamp >= corr[i, COL_EXCH_TIMESTAMP]:
-                        start = i + 1
-                        break
+                start = next(
+                    (
+                        i + 1
+                        for i in range(out_row_num - 1, -1, -1)
+                        if exch_timestamp >= corr[i, COL_EXCH_TIMESTAMP]
+                    ),
+                    -1,
+                )
                 if start < 0:
                     raise ValueError('')
                 for i in range(start, out_row_num):
@@ -206,19 +210,16 @@ def merge_on_local_timestamp(a, b):
             if a[i, 2] < b[j, 2]:
                 tmp[k] = a[i]
                 i += 1
-                k += 1
             elif a[i, 2] > b[j, 2]:
                 tmp[k] = b[j]
                 j += 1
-                k += 1
             elif a[i, 1] < b[j, 1]:
                 tmp[k] = a[i]
                 i += 1
-                k += 1
             else:
                 tmp[k] = b[j]
                 j += 1
-                k += 1
+            k += 1
         elif i < len(a):
             tmp[k] = a[i]
             i += 1

@@ -24,7 +24,7 @@ for file in input_files:
     ss_ask = None
     ss_bid_rn = 0
     ss_ask_rn = 0
-    print('Reading %s' % file)
+    print(f'Reading {file}')
     with gzip.open(file, 'r') as f:
         while True:
             line = f.readline()
@@ -121,7 +121,7 @@ print('Merging')
 
 data = sets[0]
 del sets[0]
-while len(sets) > 0:
+while sets:
     data = merge_on_local_timestamp(data, sets[0])
     del sets[0]
 
@@ -132,7 +132,7 @@ num_corr = validate_data(data)
 if num_corr < 0:
     raise ValueError
 
-print('Saving to %s' % output_filename)
+print(f'Saving to {output_filename}')
 np.savez(output_filename, data=data)
 
 print('Done')

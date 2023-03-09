@@ -11,10 +11,7 @@ def load_ndarray(filepath):
     if isinstance(data, np.ndarray):
         return data
     elif isinstance(data, np.lib.npyio.NpzFile):
-        if 'data' in data:
-            return data['data']
-        else:
-            return data[list(data.keys())[0]]
+        return data['data'] if 'data' in data else data[list(data.keys())[0]]
     else:
         raise ValueError('unknown data type')
 

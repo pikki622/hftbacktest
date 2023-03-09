@@ -6,6 +6,18 @@ from hftbacktest import NONE, NEW, HftBacktest, GTX, FeedLatency, BUY, SELL, Lin
 
 @njit
 def market_making_algo(hbt):
+    a = 1
+    b = 1
+    c = 1
+    hs = 1
+
+    # alpha, it can be a combination of several indicators.
+    forecast = 0
+    # in hft, it could be a measurement of short-term market movement such as high - low of the last x-min.
+    volatility = 0
+    max_notional_position = 1000
+    notional_qty = 100
+
     while hbt.run:
         # in microseconds
         if not hbt.elapse(0.1 * 1e6):
@@ -21,21 +33,9 @@ def market_making_algo(hbt):
 
         Also see my other repo.
         """
-        a = 1
-        b = 1
-        c = 1
-        hs = 1
-
-        # alpha, it can be a combination of several indicators.
-        forecast = 0
-        # in hft, it could be a measurement of short-term market movement such as high - low of the last x-min.
-        volatility = 0
         # delta risk, it also can be a combination of several risks.
         risk = (c + volatility) * hbt.position
         half_spread = (c + volatility) * hs
-
-        max_notional_position = 1000
-        notional_qty = 100
 
         mid = (hbt.best_bid + hbt.best_ask) / 2.0
 
@@ -64,7 +64,7 @@ def market_making_algo(hbt):
                 if round(order.price / hbt.tick_size) == new_bid_tick \
                         or hbt.position * mid > max_notional_position:
                     update_bid = False
-                elif order.cancellable or hbt.position * mid > max_notional_position:
+                elif order.cancellable:
                     hbt.cancel(order.order_id)
                     last_order_id = order.order_id
             if order.side == SELL:
@@ -88,9 +88,8 @@ def market_making_algo(hbt):
 
         # All order requests are considered to be requested at the same time.
         # Wait until one of the order responses is received.
-        if last_order_id >= 0:
-            if not hbt.wait_order_response(last_order_id):
-                return False
+        if last_order_id >= 0 and not hbt.wait_order_response(last_order_id):
+            return False
 
         print(hbt.local_timestamp, mid, hbt.position, hbt.position * mid + hbt.balance - hbt.fee)
     return True

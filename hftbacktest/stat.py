@@ -90,10 +90,7 @@ class Stat:
                 ),
                 index=self.datetime()
             )
-        if resample is None:
-            return equity
-        else:
-            return equity.resample(resample).last()
+        return equity if resample is None else equity.resample(resample).last()
 
     def sharpe(self, resample, include_fee=True, trading_days=365):
         pnl = self.equity(resample, include_fee=include_fee).diff()
@@ -112,15 +109,11 @@ class Stat:
     def drawdown(self, resample=None, include_fee=True):
         equity = self.equity(resample, include_fee=include_fee)
         max_equity = equity.cummax()
-        drawdown = equity - max_equity
-        return drawdown
+        return equity - max_equity
 
     def maxdrawdown(self, denom=None, include_fee=True):
         mdd = -self.drawdown(None, include_fee=include_fee).min()
-        if denom is None:
-            return mdd
-        else:
-            return mdd / denom
+        return mdd if denom is None else mdd / denom
 
     def daily_trade_num(self):
         return pd.Series(self.trade_num, index=self.datetime()).diff().rolling('1d').sum().mean()

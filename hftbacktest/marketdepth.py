@@ -14,18 +14,22 @@ INVALID_MAX = sys.maxsize
 
 @njit
 def depth_below(depth, start, end):
-    for t in range(start - 1, end - 1, -1):
-        if t in depth and depth[t] > 0:
-            return t
-    return INVALID_MIN
+    return next(
+        (
+            t
+            for t in range(start - 1, end - 1, -1)
+            if t in depth and depth[t] > 0
+        ),
+        INVALID_MIN,
+    )
 
 
 @njit
 def depth_above(depth, start, end):
-    for t in range(start + 1, end + 1):
-        if t in depth and depth[t] > 0:
-            return t
-    return INVALID_MAX
+    return next(
+        (t for t in range(start + 1, end + 1) if t in depth and depth[t] > 0),
+        INVALID_MAX,
+    )
 
 
 @jitclass

@@ -36,10 +36,9 @@ class NoPartialFillExch_(Proc):
     def _next_data_timestamp(self):
         if self.row_num + 1 < len(self.data):
             return self.data[self.row_num + 1, COL_EXCH_TIMESTAMP]
-        else:
-            if len(self.next_data) == 0:
-                return -2
-            return self.next_data[0, COL_EXCH_TIMESTAMP]
+        if len(self.next_data) == 0:
+            return -2
+        return self.next_data[0, COL_EXCH_TIMESTAMP]
 
     def _process_recv_order(self, order, recv_timestamp, wait_resp, next_timestamp):
         # Process a new order.
@@ -70,7 +69,7 @@ class NoPartialFillExch_(Proc):
         # Process a depth event
         if row[COL_EVENT] == DEPTH_CLEAR_EVENT:
             self.depth.clear_depth(row[COL_SIDE], row[COL_PRICE])
-        elif row[COL_EVENT] == DEPTH_EVENT or row[COL_EVENT] == DEPTH_SNAPSHOT_EVENT:
+        elif row[COL_EVENT] in [DEPTH_EVENT, DEPTH_SNAPSHOT_EVENT]:
             if row[COL_SIDE] == BUY:
                 self.depth.update_bid_depth(
                     row[COL_PRICE],
@@ -86,7 +85,6 @@ class NoPartialFillExch_(Proc):
                     self
                 )
 
-        # Process a trade event
         elif row[COL_EVENT] == TRADE_EVENT:
             # Check if a user order is filled.
             # To simplify the backtest and avoid a complex market-impact model, all user orders are
@@ -96,7 +94,7 @@ class NoPartialFillExch_(Proc):
             # This side is a trade initiator's side.
             if row[COL_SIDE] == BUY:
                 if (self.depth.best_bid_tick == INVALID_MIN) \
-                        or (len(self.orders) < price_tick - self.depth.best_bid_tick):
+                            or (len(self.orders) < price_tick - self.depth.best_bid_tick):
                     for order in list(self.orders.values()):
                         if order.side == SELL:
                             self.__check_if_sell_filled(order, price_tick, qty, row[COL_EXCH_TIMESTAMP])
@@ -105,17 +103,16 @@ class NoPartialFillExch_(Proc):
                         if t in self.sell_orders:
                             for order in list(self.sell_orders[t].values()):
                                 self.__check_if_sell_filled(order, price_tick, qty, row[COL_EXCH_TIMESTAMP])
+            elif (self.depth.best_ask_tick == INVALID_MAX) \
+                            or (len(self.orders) < self.depth.best_ask_tick - price_tick):
+                for order in list(self.orders.values()):
+                    if order.side == BUY:
+                        self.__check_if_buy_filled(order, price_tick, qty, row[COL_EXCH_TIMESTAMP])
             else:
-                if (self.depth.best_ask_tick == INVALID_MAX) \
-                        or (len(self.orders) < self.depth.best_ask_tick - price_tick):
-                    for order in list(self.orders.values()):
-                        if order.side == BUY:
+                for t in range(self.depth.best_ask_tick - 1, price_tick - 1, -1):
+                    if t in self.buy_orders:
+                        for order in list(self.buy_orders[t].values()):
                             self.__check_if_buy_filled(order, price_tick, qty, row[COL_EXCH_TIMESTAMP])
-                else:
-                    for t in range(self.depth.best_ask_tick - 1, price_tick - 1, -1):
-                        if t in self.buy_orders:
-                            for order in list(self.buy_orders[t].values()):
-                                self.__check_if_buy_filled(order, price_tick, qty, row[COL_EXCH_TIMESTAMP])
         return 0
 
     def __check_if_sell_filled(self, order, price_tick, qty, timestamp):
@@ -212,28 +209,26 @@ class NoPartialFillExch_(Proc):
                 # Initialize the order's queue position.
                 self.queue_model.new(order, self)
                 order.status = NEW
-        else:
-            # Check if the sell order price is less than or equal to the current best bid.
-            if order.price_tick <= self.depth.best_bid_tick:
-                if order.time_in_force == GTX:
-                    order.status = EXPIRED
-                else:
-                    # Take the market.
-                    return self.__fill(
-                        order,
-                        timestamp,
-                        False,
-                        exec_price_tick=self.depth.best_bid_tick,
-                        delete_order=False
-                    )
+        elif order.price_tick <= self.depth.best_bid_tick:
+            if order.time_in_force == GTX:
+                order.status = EXPIRED
             else:
-                # The exchange accepts this order.
-                self.orders[order.order_id] = order
-                o = self.sell_orders.setdefault(order.price_tick, Dict.empty(int64, order_ladder_ty))
-                o[order.order_id] = order
-                # Initialize the order's queue position.
-                self.queue_model.new(order, self)
-                order.status = NEW
+                # Take the market.
+                return self.__fill(
+                    order,
+                    timestamp,
+                    False,
+                    exec_price_tick=self.depth.best_bid_tick,
+                    delete_order=False
+                )
+        else:
+            # The exchange accepts this order.
+            self.orders[order.order_id] = order
+            o = self.sell_orders.setdefault(order.price_tick, Dict.empty(int64, order_ladder_ty))
+            o[order.order_id] = order
+            # Initialize the order's queue position.
+            self.queue_model.new(order, self)
+            order.status = NEW
         order.exch_timestamp = timestamp
         local_recv_timestamp = timestamp + self.order_latency.response(order, self)
         self.orders_to.append(order.copy(), local_recv_timestamp)

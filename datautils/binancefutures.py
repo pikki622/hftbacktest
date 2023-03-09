@@ -100,7 +100,7 @@ num_corr = validate_data(data)
 if num_corr < 0:
     raise ValueError
 
-print('Saving to %s' % output_filename)
+print(f'Saving to {output_filename}')
 np.savez(output_filename, data=data)
 
 print('Done')
