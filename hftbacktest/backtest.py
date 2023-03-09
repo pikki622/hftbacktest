@@ -117,20 +117,22 @@ class SingleInstHftBacktest_:
 
             # Local will be processed.
             if (0 < next_local_timestamp < next_exch_timestamp) \
-                    or (next_local_timestamp > 0 >= next_exch_timestamp):
+                        or (next_local_timestamp > 0 >= next_exch_timestamp):
                 if next_local_timestamp > timestamp:
                     break
                 resp_timestamp = self.local.process(WAIT_ORDER_RESPONSE_NONE)
 
-            # Exchange will be processed.
             elif (0 < next_exch_timestamp <= next_local_timestamp) \
-                    or (next_exch_timestamp > 0 >= next_local_timestamp):
+                        or (next_exch_timestamp > 0 >= next_local_timestamp):
                 if next_exch_timestamp > timestamp:
                     break
-                wait_resp = wait_order_response if not found_order_resp_timestamp else WAIT_ORDER_RESPONSE_NONE
+                wait_resp = (
+                    WAIT_ORDER_RESPONSE_NONE
+                    if found_order_resp_timestamp
+                    else wait_order_response
+                )
                 resp_timestamp = self.exch.process(wait_resp)
 
-            # No more data or orders to be processed.
             else:
                 self.run = False
                 break
@@ -141,9 +143,7 @@ class SingleInstHftBacktest_:
 
         self.current_timestamp = timestamp
 
-        if not self.run:
-            return False
-        return True
+        return bool(self.run)
 
 
 def SingleInstHftBacktest(local, exch):

@@ -76,12 +76,11 @@ def HftBacktest(data, tick_size, lot_size, maker_fee, taker_fee, order_latency, 
             tmp = np.load(snapshot)
             if 'data' in tmp:
                 snapshot = tmp['data']
-                assert snapshot.shape[1] >= 6
             else:
                 k = list(tmp.keys())[0]
-                print("Snapshot is loaded from %s instead of 'data'" % k)
+                print(f"Snapshot is loaded from {k} instead of 'data'")
                 snapshot = tmp[k]
-                assert snapshot.shape[1] >= 6
+            assert snapshot.shape[1] >= 6
         else:
             df = pd.read_pickle(snapshot, compression='gzip')
             assert (snapshot.columns[:6] == [
@@ -93,9 +92,7 @@ def HftBacktest(data, tick_size, lot_size, maker_fee, taker_fee, order_latency, 
                 'qty'
             ]).all()
             snapshot = df.to_numpy()
-    elif snapshot is None:
-        pass
-    else:
+    elif snapshot is not None:
         raise ValueError('Unsupported snapshot type')
 
     if queue_model is None:
